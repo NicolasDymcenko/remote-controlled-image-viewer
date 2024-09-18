@@ -1,0 +1,40 @@
+# Ignore node modules
+node_modules/
+
+# Ignore Python bytecode files
+*.py[cod]
+__pycache__/
+
+# Ignore virtual environment folders
+.venv/
+env/
+venv/
+
+# Ignore common Python development files
+*.pyo
+*.pyd
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore pip files
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignore Python egg and package distribution files
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Ignore poetry files
+.poetry/
+.mypy_cache/
+.pytest_cache/
+
+# Ignore other virtualenv files
+.virtualenv/
+
+# Ignore local environments
+local.env
