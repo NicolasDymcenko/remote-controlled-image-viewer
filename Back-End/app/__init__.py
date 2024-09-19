@@ -2,8 +2,10 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_restx import Api
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 db = SQLAlchemy()
+from .events import socketio
 
 def create_app():
     app = Flask(__name__)
@@ -14,7 +16,7 @@ def create_app():
     # Initialize Flask extensions
     db.init_app(app)
     
-    # Enable CORS for all domains (wildcard *)
+    # Enable CORS for all domains
     CORS(app, resources={r"/*": {"origins": "*"}})
     
     # Create the API
@@ -24,5 +26,8 @@ def create_app():
     # Import and register blueprints or namespaces
     from .routes import api as api_namespace
     api.add_namespace(api_namespace, path='/api')
+    
+    # Initialize SocketIO with the Flask app
+    socketio.init_app(app)
     
     return app

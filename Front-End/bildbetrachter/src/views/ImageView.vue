@@ -1,6 +1,6 @@
 <template>
   <div class="image-viewer" tabindex="0" @keydown="handleKeyDown" ref="viewer">
-    <div v-if="paket_id !== '-1' && images.length > 0" class="image-info">Bild {{ currentIndex + 1 }} von {{ images.length }}</div>
+    <div v-if="images.length > 0" class="image-info">Bild {{ currentIndex + 1 }} von {{ images.length }}</div>
     <div class="image-container" 
          ref="container" 
          @wheel="handleZoom" 
@@ -15,9 +15,9 @@
            alt="Aktuelles Bild" 
            @load="resetView"
            draggable="false" />
-      <div v-else-if="paket_id !== '-1'" class="no-image-message">Kein Bild für diese Paket ID vorhanden.</div>
+      <div v-else class="no-image-message">Kein Bild verfügbar.</div>
     </div>
-    <div v-if="paket_id !== '-1'" class="preview-container">
+    <div class="preview-container">
       <div class="preview-images">
         <img v-for="(image, index) in images" 
              :key="index" 
@@ -60,11 +60,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
-import axios from 'axios';
+import { io } from 'socket.io-client';
 
-const route = useRoute();
-const paket_id = route.params.paketid;
+// Initialize the state variables
 const images = ref([]);
 const currentIndex = ref(0);
 const scale = ref(1);
@@ -73,10 +71,12 @@ const dragStart = ref({ x: 0, y: 0 });
 const position = ref({ x: 0, y: 0 });
 const isDragging = ref(false);
 
+// Image references
 const container = ref(null);
 const image = ref(null);
 const viewer = ref(null);
 
+// Computed properties for current image and image styles
 const currentImage = computed(() => images.value[currentIndex.value]);
 
 const imageStyle = computed(() => ({
@@ -85,16 +85,28 @@ const imageStyle = computed(() => ({
   pointerEvents: 'none',
 }));
 
-onMounted(async () => {
-  if (paket_id !== '-1') {
-    try {
-      const response = await axios.get(`http://192.168.2.128:5000/api/${paket_id}`);
-      images.value = response.data.map(base64Image => `data:image/jpeg;base64,${base64Image}`);
-      viewer.value.focus();
-    } catch (error) {
-      console.error('Error fetching images:', error);
-    }
-  }
+// Set up the WebSocket connection and handle incoming images
+onMounted(() => {
+  const socket = io('http://192.168.2.128:5000'); // Adjust the backend URL accordingly
+
+  socket.on('connect', () => {
+    console.log('Connected to backend WebSocket');
+  });
+
+  socket.on('newImage', (imageData) => {
+    console.log('Received new image');
+    // Replace the images dynamically
+    images.value = imageData.map(base64Image => `data:image/jpeg;base64,${base64Image}`);
+    currentIndex.value = 0;  // Automatically switch to the new image
+    resetView();
+  });
+
+  // Handle 'clearImages' event to clear all displayed images
+  socket.on('clearImages', () => {
+    console.log('Clear images event received');
+    images.value = [];  // Clear all images
+    currentIndex.value = 0;  // Reset index
+  });
 
   document.addEventListener('mousemove', drag);
   document.addEventListener('mouseup', endDrag);
@@ -105,6 +117,7 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', endDrag);
 });
 
+// Image controls
 const selectImage = (index) => {
   currentIndex.value = index;
   resetView();
@@ -120,6 +133,7 @@ const prevImage = () => {
   resetView();
 };
 
+// Zoom and rotate controls
 const zoomFactor = 1.1;
 const minZoom = 0.1;
 const maxZoom = 5;
@@ -146,6 +160,7 @@ const resetView = () => {
   position.value = { x: 0, y: 0 };
 };
 
+// Image dragging logic
 const handleZoom = (e) => {
   e.preventDefault();
   if (e.deltaY < 0) {
@@ -174,6 +189,7 @@ const endDrag = () => {
   isDragging.value = false;
 };
 
+// Keyboard shortcuts
 const moveStep = 50;
 
 const moveImage = (dx, dy) => {
