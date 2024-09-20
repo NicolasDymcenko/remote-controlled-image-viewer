@@ -10,6 +10,7 @@ from .events import connected_ips
 # Route to send images to a specific IP
 @api.route('/<string:paket_id>/<string:ip>')
 @api.response(404, 'Paket ID not found')
+@api.response(400, 'IP not connected to WebSocket')
 class PaketBildList(Resource):
     def get(self, paket_id, ip):
         """
@@ -17,6 +18,10 @@ class PaketBildList(Resource):
         ordered by ausschnitt (True first, then False),
         and send the image data via WebSocket to a specific IP room.
         """
+        # Check if the IP is connected to WebSocket
+        if ip not in connected_ips:
+            return {'error': f'IP {ip} is not connected to WebSocket.'}, 400
+
         # Query the database and order by 'ausschnitt', with True first
         paket_bilder = PaketBild.query.filter_by(paket_id=paket_id).order_by(PaketBild.ausschnitt.desc()).all()
         
@@ -42,6 +47,7 @@ class ConnectedIPs(Resource):
 
 # Route to clear all images for a specific IP (without deleting data)
 @api.route('/clear_images/<string:ip>')
+@api.response(400, 'IP not connected to WebSocket')
 class ClearImagesForIP(Resource):
     def post(self, ip):
         """
@@ -49,7 +55,7 @@ class ClearImagesForIP(Resource):
         """
         # Check if the IP is connected
         if ip not in connected_ips:
-            return {'error': f'IP {ip} is not connected.'}, 404
+            return {'error': f'IP {ip} is not connected to WebSocket.'}, 400
 
         # Emit a 'clearImages' event to the specific IP room
         socketio.emit('clearImages', room=ip)
